@@ -32,11 +32,15 @@ logger = Log(__name__).getlog()
 # NOTE: you need this func to generate our sphinx doc
 
 
+def get_config(config_path):
+    confs = CfgNode(new_allowed=True)
+    confs.merge_from_file(config_path)
+    return confs
+
+
 def load_trained_model(args):
     args.nprocs = args.ngpu
-    confs = CfgNode()
-    confs.set_new_allowed(True)
-    confs.merge_from_file(args.model_conf)
+    confs = get_config(args.model_conf)
     class_obj = dynamic_import_tester(args.model_name)
     exp = class_obj(confs, args)
     with exp.eval():
@@ -56,8 +60,7 @@ def get_config(config_path):
 
 def load_trained_lm(args):
     lm_args = get_config(args.rnnlm_conf)
-    # NOTE: for a compatibility with less than 0.5.0 version models
-    lm_model_module = getattr(lm_args, "model_module", "default")
+    lm_model_module = lm_args.model_module
     lm_class = dynamic_import_lm(lm_model_module)
     lm = lm_class(**lm_args.model)
     model_dict = paddle.load(args.rnnlm)
