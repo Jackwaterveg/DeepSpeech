@@ -24,6 +24,7 @@ from .utils import add_results_to_json
 from deepspeech.exps import dynamic_import_tester
 from deepspeech.io.reader import LoadInputsAndTargets
 from deepspeech.models.asr_interface import ASRInterface
+from deepspeech.models.lm_interface import dynamic_import_lm
 from deepspeech.utils.log import Log
 
 logger = Log(__name__).getlog()
@@ -47,10 +48,10 @@ def load_trained_model(args):
 
 
 def get_config(config_path):
-    stream = open(config_path, mode='r', encoding="utf-8")
-    config = yaml.load(stream, Loader=yaml.FullLoader)
-    stream.close()
-    return config
+    confs = CfgNode()
+    confs.set_new_allowed(True)
+    confs.merge_from_file(config_path)
+    return confs
 
 
 def load_trained_lm(args):
@@ -58,7 +59,7 @@ def load_trained_lm(args):
     # NOTE: for a compatibility with less than 0.5.0 version models
     lm_model_module = getattr(lm_args, "model_module", "default")
     lm_class = dynamic_import_lm(lm_model_module)
-    lm = lm_class(lm_args.model)
+    lm = lm_class(**lm_args.model)
     model_dict = paddle.load(args.rnnlm)
     lm.set_state_dict(model_dict)
     return lm
