@@ -19,6 +19,9 @@ from typing import Optional
 from typing import Tuple
 
 import paddle
+import os
+import numpy as np
+root_dir = "compare/result_store/paddlespeech"
 from paddle import nn
 from typeguard import check_argument_types
 
@@ -39,6 +42,8 @@ from paddlespeech.s2t.modules.subsampling import Conv2dSubsampling6
 from paddlespeech.s2t.modules.subsampling import Conv2dSubsampling8
 from paddlespeech.s2t.modules.subsampling import LinearNoSubsampling
 from paddlespeech.s2t.utils.log import Log
+
+from paddlespeech.s2t.modules.debug import PassLayer
 
 logger = Log(__name__).getlog()
 
@@ -130,6 +135,7 @@ class BaseEncoder(nn.Layer):
 
         self.normalize_before = normalize_before
         self.after_norm = nn.LayerNorm(output_size, epsilon=1e-12)
+       # self.after_norm = PassLayer()
         self.static_chunk_size = static_chunk_size
         self.use_dynamic_chunk = use_dynamic_chunk
         self.use_dynamic_left_chunk = use_dynamic_left_chunk
@@ -164,7 +170,18 @@ class BaseEncoder(nn.Layer):
         if self.global_cmvn is not None:
             xs = self.global_cmvn(xs)
         #TODO(Hui Zhang): self.embed(xs, masks, offset=0), stride_slice not support bool tensor
+
+        print ("input", xs)
+        xs_input_np = xs.numpy()
+        np.save(os.path.join(root_dir, "input_.npy"), xs_input_np)
+
         xs, pos_emb, masks = self.embed(xs, masks.astype(xs.dtype), offset=0)
+
+        print ("pos_emb", pos_emb)
+        print ("masks", masks)
+        xs_embed_np = xs.numpy()
+        np.save(os.path.join(root_dir, "embed_.npy"), xs_embed_np)
+
         #TODO(Hui Zhang): remove mask.astype, stride_slice not support bool tensor
         masks = masks.astype(paddle.bool)
         #TODO(Hui Zhang): mask_pad = ~masks
@@ -173,8 +190,14 @@ class BaseEncoder(nn.Layer):
             xs, masks, self.use_dynamic_chunk, self.use_dynamic_left_chunk,
             decoding_chunk_size, self.static_chunk_size,
             num_decoding_left_chunks)
+        print ("chunk_masks", chunk_masks)
+        i = 0
         for layer in self.encoders:
             xs, chunk_masks, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
+            xs_np = xs.numpy()
+            print ("xs_np", xs_np)
+            np.save(os.path.join(root_dir, "encoder_"+ str(i)+"_.npy"), xs_np)
+            i += 1
         if self.normalize_before:
             xs = self.after_norm(xs)
         # Here we assume the mask is not changed in encoder layers, so just
@@ -489,5 +512,5 @@ class ConformerEncoder(BaseEncoder):
                 if use_cnn_module else None,
                 dropout_rate=dropout_rate,
                 normalize_before=normalize_before,
-                concat_after=concat_after) for _ in range(num_blocks)
+                concat_after=concat_after, layer_idx = idx) for idx in range(num_blocks)
         ])

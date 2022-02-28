@@ -160,6 +160,7 @@ class RelPositionalEncoding(PositionalEncoding):
         """
         assert offset + x.shape[1] < self.max_len
         x = x * self.xscale
+        print ("rel position encoding, xcale", self.xscale)
         #TODO(Hui Zhang): using x.size(1), __getitem__ not support Tensor
         pos_emb = self.pe[:, offset:offset + x.shape[1]]
         return self.dropout(x), self.dropout(pos_emb)

@@ -201,6 +201,8 @@ class Trainer():
             self.optimizer,
             checkpoint_dir=self.checkpoint_dir,
             checkpoint_path=self.args.checkpoint_path)
+        infos["epoch"] = 0
+        infos["step"] = 0
         if infos:
             # just restore ckpt
             # lr will resotre from optimizer ckpt

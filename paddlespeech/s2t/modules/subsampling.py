@@ -22,6 +22,10 @@ from paddle import nn
 from paddlespeech.s2t.modules.embedding import PositionalEncoding
 from paddlespeech.s2t.utils.log import Log
 
+import os
+import numpy as np
+root_dir = "compare/result_store/paddlespeech"
+
 logger = Log(__name__).getlog()
 
 __all__ = [
@@ -136,9 +140,20 @@ class Conv2dSubsampling4(Conv2dSubsampling):
         """
         x = x.unsqueeze(1)  # (b, c=1, t, f)
         x = self.conv(x)
+        xs_conv_np = x.numpy()
+        np.save(os.path.join(root_dir, "embed_conv.npy"), xs_conv_np)
+
         b, c, t, f = paddle.shape(x)
         x = self.out(x.transpose([0, 2, 1, 3]).reshape([b, t, c * f]))
+
+        xs_linear = x.numpy()
+        np.save(os.path.join(root_dir, "embed_linear.npy"), xs_linear)
+
         x, pos_emb = self.pos_enc(x, offset)
+
+        xs_pos = x.numpy()
+        np.save(os.path.join(root_dir, "embed_pos.npy"), xs_pos)
+
         return x, pos_emb, x_mask[:, :, :-2:2][:, :, :-2:2]
 
 

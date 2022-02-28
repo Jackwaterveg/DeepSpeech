@@ -21,6 +21,12 @@ import paddle
 from paddle import nn
 
 from paddlespeech.s2t.utils.log import Log
+from paddlespeech.s2t.modules.debug import PassLayer
+
+import os
+import numpy as np
+root_dir = "compare/result_store/paddlespeech"
+
 
 logger = Log(__name__).getlog()
 
@@ -55,7 +61,8 @@ class DecoderLayer(nn.Layer):
             feed_forward: nn.Layer,
             dropout_rate: float,
             normalize_before: bool=True,
-            concat_after: bool=False, ):
+            concat_after: bool=False,
+            layer_idx: int = -1 ):
         """Construct an DecoderLayer object."""
         super().__init__()
         self.size = size
@@ -65,11 +72,17 @@ class DecoderLayer(nn.Layer):
         self.norm1 = nn.LayerNorm(size, epsilon=1e-12)
         self.norm2 = nn.LayerNorm(size, epsilon=1e-12)
         self.norm3 = nn.LayerNorm(size, epsilon=1e-12)
+
+       # self.norm1 = PassLayer()
+       # self.norm2 = PassLayer()
+       # self.norm3 = PassLayer()
+
         self.dropout = nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
         self.concat_after = concat_after
         self.concat_linear1 = nn.Linear(size + size, size)
         self.concat_linear2 = nn.Linear(size + size, size)
+        self.layer_idx = layer_idx
 
     def forward(
             self,
@@ -124,6 +137,10 @@ class DecoderLayer(nn.Layer):
         else:
             x = residual + self.dropout(
                 self.self_attn(tgt_q, tgt, tgt, tgt_q_mask))
+
+            x_np = x.numpy()
+            np.save(os.path.join(root_dir, "decoder_" + str(self.layer_idx) + "_attn_.npy"), x_np)
+
         if not self.normalize_before:
             x = self.norm1(x)
 
@@ -137,6 +154,8 @@ class DecoderLayer(nn.Layer):
         else:
             x = residual + self.dropout(
                 self.src_attn(x, memory, memory, memory_mask))
+            x_np = x.numpy()
+            np.save(os.path.join(root_dir, "decoder_" + str(self.layer_idx) + "_src_attn_.npy"), x_np)
         if not self.normalize_before:
             x = self.norm2(x)
 
@@ -144,6 +163,10 @@ class DecoderLayer(nn.Layer):
         if self.normalize_before:
             x = self.norm3(x)
         x = residual + self.dropout(self.feed_forward(x))
+
+        x_np = x.numpy()
+        np.save(os.path.join(root_dir, "decoder_" + str(self.layer_idx) + "_ff_.npy"), x_np)
+
         if not self.normalize_before:
             x = self.norm3(x)
 

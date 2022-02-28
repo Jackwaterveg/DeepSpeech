@@ -21,6 +21,11 @@ from paddle.nn import functional as F
 
 from paddlespeech.s2t.utils.log import Log
 
+import os
+import numpy as np
+root_dir = "compare/result_store/paddlespeech"
+
+
 logger = Log(__name__).getlog()
 
 __all__ = ['CTCLoss', "LabelSmoothingLoss"]
@@ -143,6 +148,15 @@ class LabelSmoothingLoss(nn.Layer):
         self.confidence = 1.0 - smoothing
         self.normalize_length = normalize_length
         self.criterion = nn.KLDivLoss(reduction="none")
+        
+
+        """
+        padding_idx -1
+        self.confidence 0.9
+        self.smoothing 0.1
+        self.size 4233
+
+        """
 
     def forward(self, x: paddle.Tensor, target: paddle.Tensor) -> paddle.Tensor:
         """Compute loss between x and target.
@@ -157,6 +171,19 @@ class LabelSmoothingLoss(nn.Layer):
         Returns:
             loss (paddle.Tensor) : The KL loss, scalar float value
         """
+        # print ("===========")
+        # print ("padding_idx", self.padding_idx)
+        # print ("self.confidence", self.confidence)
+        # print ("self.smoothing",self.smoothing)
+        # print ("self.size",self.size)
+        # print ("self.normalize_length", self.normalize_length)
+        """
+        padding_idx -1
+        self.confidence 0.9
+        self.smoothing 0.1
+        self.size 4233
+        self.normalize_length False
+        """
         B, T, D = paddle.shape(x)
         assert D == self.size
         x = x.reshape((-1, self.size))
@@ -169,17 +196,51 @@ class LabelSmoothingLoss(nn.Layer):
 
         #TODO(Hui Zhang): target = target * (1 - ignore)  # avoid -1 index
         target = target.masked_fill(ignore, 0)  # avoid -1 index
+        print ("target", target)
         # true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
         target_mask = F.one_hot(target, self.size)
         true_dist *= (1 - target_mask)
         true_dist += target_mask * self.confidence
+        print ("true_dist", true_dist)
+        np.save(os.path.join(root_dir, "true_dist.npy"), true_dist.numpy())
 
+        # print ("x", x)
+        # print ("paddle softmax", F.softmax(x, axis=1))
+        # print ("paddle.log_softmax", paddle.log_softmax(x, axis=1))
+        # #print ("log_softmax",F.log_softmax(x, axis=1))
+        # x_np = x.numpy()
+        # import torch
+        # x_torch_tensor = torch.tensor(x_np)
+        # torch_softmax = torch.softmax(x_torch_tensor, dim=1)
+        # torch_log_softmax = torch.log_softmax(x_torch_tensor, dim=1)
+        # print (x_torch_tensor.size())
+        # print ("torch softmax", torch_softmax)
+        # print("torch_log_softmax", torch_log_softmax)
+        # torch_log_softmax_np = torch_log_softmax.numpy()
+        # torch_log_softmax_pdtensor = paddle.to_tensor(torch_log_softmax_np)
+
+        #kl = self.criterion(paddle.log(F.softmax(x, axis=1)), true_dist
         kl = self.criterion(F.log_softmax(x, axis=1), true_dist)
-
+        print ("kl", kl)
+        log_softmax = F.log_softmax(x, axis=1)
+        x_log_softmax_np = log_softmax.cpu().detach().numpy()
+        np.save(os.path.join(root_dir, "log_softmax_.npy"), x_log_softmax_np)
+       # kl = self.criterion(torch_log_softmax_pdtensor, true_dist)
+        np.save("paddle_smoothing_x.npy", x.numpy())
+        np.save("paddle_log_softmax.npy", F.log_softmax(x, axis=1).numpy())
         #TODO(Hui Zhang): sum not support bool type
         #total = len(target) - int(ignore.sum())
         total = len(target) - int(ignore.type_as(target).sum())
+        print ("total", total)
         denom = total if self.normalize_length else B
         #numer = (kl * (1 - ignore)).sum()
-        numer = kl.masked_fill(ignore.unsqueeze(1), 0).sum()
-        return numer / denom
+        print ("ignore", ignore)
+      #  numer = kl.masked_fill(ignore.unsqueeze(1), 0).sum() # ignore the impact of the ignored ids
+        numer = kl.sum()
+        print ("numer", numer)
+        print ("denom", denom)
+        res = numer / denom
+        res_np = res.numpy()
+        np.save(os.path.join(root_dir, "attn_res_.npy"), res_np)
+        print ("attn_res_np", res_np)
+        return res

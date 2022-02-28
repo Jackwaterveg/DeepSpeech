@@ -22,6 +22,13 @@ from paddle import nn
 
 from paddlespeech.s2t.utils.log import Log
 
+from paddlespeech.s2t.modules.debug import PassLayer
+
+import os
+import numpy as np
+
+root_dir = "compare/result_store/paddlespeech"
+
 logger = Log(__name__).getlog()
 
 __all__ = ["TransformerEncoderLayer", "ConformerEncoderLayer"]
@@ -39,7 +46,7 @@ class TransformerEncoderLayer(nn.Layer):
             normalize_before: bool=True,
             concat_after: bool=False, ):
         """Construct an EncoderLayer object.
-        
+
         Args:
             size (int): Input dimension.
             self_attn (nn.Layer): Self-attention module instance.
@@ -145,9 +152,10 @@ class ConformerEncoderLayer(nn.Layer):
             conv_module: Optional[nn.Layer]=None,
             dropout_rate: float=0.1,
             normalize_before: bool=True,
-            concat_after: bool=False, ):
+            concat_after: bool=False,
+            layer_idx: int=-1):
         """Construct an EncoderLayer object.
-        
+
         Args:
             size (int): Input dimension.
             self_attn (nn.Layer): Self-attention module instance.
@@ -176,21 +184,27 @@ class ConformerEncoderLayer(nn.Layer):
         self.conv_module = conv_module
         self.norm_ff = nn.LayerNorm(size, epsilon=1e-12)  # for the FNN module
         self.norm_mha = nn.LayerNorm(size, epsilon=1e-12)  # for the MHA module
+      #  self.norm_ff = PassLayer()
+      #  self.norm_mha = PassLayer()
         if feed_forward_macaron is not None:
             self.norm_ff_macaron = nn.LayerNorm(size, epsilon=1e-12)
+          #  self.norm_ff_macaron = PassLayer()
             self.ff_scale = 0.5
         else:
             self.ff_scale = 1.0
         if self.conv_module is not None:
             self.norm_conv = nn.LayerNorm(
                 size, epsilon=1e-12)  # for the CNN module
+          #  self.norm_conv = PassLayer()
             self.norm_final = nn.LayerNorm(
                 size, epsilon=1e-12)  # for the final output of the block
+          #  self.norm_final = PassLayer()
         self.dropout = nn.Dropout(dropout_rate)
         self.size = size
         self.normalize_before = normalize_before
         self.concat_after = concat_after
         self.concat_linear = nn.Linear(size + size, size)
+        self.layer_idx = layer_idx
 
     def forward(
             self,
@@ -226,6 +240,11 @@ class ConformerEncoderLayer(nn.Layer):
             if not self.normalize_before:
                 x = self.norm_ff_macaron(x)
 
+        # Debug HYX
+        encoder_name = "encoder_" + str(self.layer_idx) + "_"
+        x_ff1_np = x.numpy()
+        np.save(os.path.join(root_dir, encoder_name + "x_ff1_.npy"), x_ff1_np)
+
         # multi-headed self-attention module
         residual = x
         if self.normalize_before:
@@ -243,6 +262,10 @@ class ConformerEncoderLayer(nn.Layer):
             mask = mask[:, -chunk:, :]
 
         x_att = self.self_attn(x_q, x, x, pos_emb, mask)
+
+        # Debug HYX
+        x_att_np = x_att.numpy()
+        np.save(os.path.join(root_dir, encoder_name + "x_att_.npy"), x_att_np)
 
         if self.concat_after:
             x_concat = paddle.concat((x, x_att), axis=-1)
@@ -266,6 +289,10 @@ class ConformerEncoderLayer(nn.Layer):
 
             if not self.normalize_before:
                 x = self.norm_conv(x)
+
+        # Debug HYX
+        x_conv_np = x.numpy()
+        np.save(os.path.join(root_dir, encoder_name + "x_conv_.npy"), x_conv_np)
 
         # feed forward module
         residual = x

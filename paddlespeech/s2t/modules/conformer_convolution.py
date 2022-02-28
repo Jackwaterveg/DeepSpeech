@@ -23,6 +23,8 @@ from typeguard import check_argument_types
 
 from paddlespeech.s2t.utils.log import Log
 
+from paddlespeech.s2t.modules.debug import PassLayer
+
 logger = Log(__name__).getlog()
 
 __all__ = ['ConvolutionModule']
@@ -60,8 +62,8 @@ class ConvolutionModule(nn.Layer):
         )
 
         # self.lorder is used to distinguish if it's a causal convolution,
-        # if self.lorder > 0: 
-        #    it's a causal convolution, the input will be padded with 
+        # if self.lorder > 0:
+        #    it's a causal convolution, the input will be padded with
         #    `self.lorder` frames on the left in forward (causal conv impl).
         # else: it's a symmetrical convolution
         if causal:
@@ -91,6 +93,7 @@ class ConvolutionModule(nn.Layer):
         else:
             self.use_layer_norm = True
             self.norm = nn.LayerNorm(channels)
+        #     self.norm = PassLayer()
 
         self.pointwise_conv2 = nn.Conv1D(
             channels,

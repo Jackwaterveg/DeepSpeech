@@ -72,6 +72,7 @@ class WarmupLR(LRScheduler):
     def get_lr(self):
         # self.last_epoch start from zero
         step_num = self.last_epoch + 1
+        print ("step_num", step_num)
         return self.base_lr * self.warmup_steps**0.5 * min(
             step_num**-0.5, step_num * self.warmup_steps**-1.5)
 

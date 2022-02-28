@@ -83,6 +83,7 @@ class BatchDataLoader():
         self.json_file = json_file
         self.train_mode = train_mode
         self.use_sortagrad = sortagrad == -1 or sortagrad > 0
+        self.use_sortagrad = True
         self.batch_size = batch_size
         self.maxlen_in = maxlen_in
         self.maxlen_out = maxlen_out
@@ -106,7 +107,7 @@ class BatchDataLoader():
 
         self.feat_dim, self.vocab_size = feat_dim_and_vocab_size(
             self.data_json, mode='asr')
-
+        print ("use_sortagrad", self.use_sortagrad)
         # make minibatch list (variable length)
         self.minibaches = make_batchset(
             self.data_json,

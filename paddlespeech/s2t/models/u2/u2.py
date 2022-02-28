@@ -94,6 +94,8 @@ class U2BaseModel(ASRInterface, nn.Layer):
             speech_lengths: paddle.Tensor,
             text: paddle.Tensor,
             text_lengths: paddle.Tensor,
+            encoder_out=None,
+            encoder_mask=None
     ) -> Tuple[Optional[paddle.Tensor], Optional[paddle.Tensor], Optional[
             paddle.Tensor]]:
         """Frontend + Encoder + Decoder + Calc loss
@@ -112,7 +114,11 @@ class U2BaseModel(ASRInterface, nn.Layer):
                                          text.shape, text_lengths.shape)
         # 1. Encoder
         start = time.time()
-        encoder_out, encoder_mask = self.encoder(speech, speech_lengths)
+        if encoder_out is None:
+            encoder_out, encoder_mask = self.encoder(speech, speech_lengths)
+        else:
+            encoder_out = encoder_out
+            encoder_mask = encoder_mask
         encoder_time = time.time() - start
         #logger.debug(f"encoder time: {encoder_time}")
         #TODO(Hui Zhang): sum not support bool type

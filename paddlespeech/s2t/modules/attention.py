@@ -24,6 +24,10 @@ from paddle.nn import initializer as I
 
 from paddlespeech.s2t.utils.log import Log
 
+import os
+import numpy as np
+root_dir = "compare/result_store/paddlespeech"
+
 logger = Log(__name__).getlog()
 
 __all__ = ["MultiHeadedAttention", "RelPositionMultiHeadedAttention"]
@@ -36,7 +40,7 @@ __all__ = ["MultiHeadedAttention", "RelPositionMultiHeadedAttention"]
 class MultiHeadedAttention(nn.Layer):
     """Multi-Head Attention layer."""
 
-    def __init__(self, n_head: int, n_feat: int, dropout_rate: float):
+    def __init__(self, n_head: int, n_feat: int, dropout_rate: float, name: str=""):
         """Construct an MultiHeadedAttention object.
         Args:
             n_head (int): The number of heads.
@@ -53,6 +57,7 @@ class MultiHeadedAttention(nn.Layer):
         self.linear_v = nn.Linear(n_feat, n_feat)
         self.linear_out = nn.Linear(n_feat, n_feat)
         self.dropout = nn.Dropout(p=dropout_rate)
+        self.name = name
 
     def forward_qkv(self,
                     query: paddle.Tensor,
@@ -99,6 +104,7 @@ class MultiHeadedAttention(nn.Layer):
                 by the attention score, (#batch, time1, d_model).
         """
         n_batch = value.shape[0]
+        print (self.name + "attn mask", mask)
         if mask is not None:
             mask = mask.unsqueeze(1).eq(0)  # (batch, 1, *, time2)
             scores = scores.masked_fill(mask, -float('inf'))
@@ -109,10 +115,16 @@ class MultiHeadedAttention(nn.Layer):
             attn = paddle.softmax(
                 scores, axis=-1)  # (batch, head, time1, time2)
 
+        x_np = attn.numpy()
+        np.save(os.path.join(root_dir, self.name + "attn.npy"), x_np)
+
         p_attn = self.dropout(attn)
         x = paddle.matmul(p_attn, value)  # (batch, head, time1, d_k)
         x = x.transpose([0, 2, 1, 3]).view(n_batch, -1, self.h *
                                            self.d_k)  # (batch, time1, d_model)
+        
+        x_np = x.numpy()
+        np.save(os.path.join(root_dir, self.name + "value.npy"), x_np)
 
         return self.linear_out(x)  # (batch, time1, d_model)
 
@@ -132,8 +144,17 @@ class MultiHeadedAttention(nn.Layer):
             torch.Tensor: Output tensor (#batch, time1, d_model).
         """
         q, k, v = self.forward_qkv(query, key, value)
+        x_np = q.numpy()
+        np.save(os.path.join(root_dir, self.name + "q.npy"), x_np)
+        x_np = k.numpy()
+        np.save(os.path.join(root_dir, self.name + "k.npy"), x_np)
+        x_np = v.numpy()
+        np.save(os.path.join(root_dir, self.name + "v.npy"), x_np)
+        print ("d_k", math.sqrt(self.d_k))
         scores = paddle.matmul(q,
                                k.transpose([0, 1, 3, 2])) / math.sqrt(self.d_k)
+        x_np = scores.numpy()
+        np.save(os.path.join(root_dir, self.name + "scores.npy"), x_np)
         return self.forward_attention(v, scores, mask)
 
 

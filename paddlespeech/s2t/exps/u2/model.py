@@ -47,7 +47,7 @@ class U2Trainer(Trainer):
     def __init__(self, config, args):
         super().__init__(config, args)
 
-    def train_batch(self, batch_index, batch_data, msg):
+    def train_batch(self, batch_index, batch_data, msg, train_loss_list):
         train_conf = self.config
         start = time.time()
 
@@ -91,6 +91,9 @@ class U2Trainer(Trainer):
 
         for k, v in losses_np.items():
             report(k, v)
+
+        train_loss_list.append(losses_np["loss"])
+
         report("batch_size", self.config.batch_size)
         report("accum", train_conf.accum_grad)
         report("step_cost", iteration_time)
@@ -151,7 +154,7 @@ class U2Trainer(Trainer):
         # paddle.jit.save(script_model, script_model_path)
 
         self.before_train()
-
+        train_loss_list = []
         logger.info(f"Train Total Examples: {len(self.train_loader.dataset)}")
         while self.epoch < self.config.n_epoch:
             with Timer("Epoch-Train Time Cost: {}"):
@@ -167,7 +170,8 @@ class U2Trainer(Trainer):
                             report("epoch", self.epoch)
                             report('step', self.iteration)
                             report("lr", self.lr_scheduler())
-                            self.train_batch(batch_index, batch, msg)
+                            report("batch_shape", batch[1].shape)
+                            self.train_batch(batch_index, batch, msg, train_loss_list)
                             self.after_train_batch()
                             report('iter', batch_index + 1)
                             report('total', len(self.train_loader))
@@ -175,7 +179,7 @@ class U2Trainer(Trainer):
                         observation['batch_cost'] = observation[
                             'reader_cost'] + observation['step_cost']
                         observation['samples'] = observation['batch_size']
-                        observation['ips,sent./sec'] = observation[
+                        observation['ips,samples/s'] = observation[
                             'batch_size'] / observation['batch_cost']
                         for k, v in observation.items():
                             msg += f" {k.split(',')[0]}: "
@@ -215,6 +219,12 @@ class U2Trainer(Trainer):
 
             self.save(tag=self.epoch, infos={'val_loss': cv_loss})
             self.new_epoch()
+        # save the tran_loss_list
+        import pandas as pd
+        dict = {"ppsp": train_loss_list}
+        df = pd.DataFrame(dict)
+        encoder_type = self.config["encoder"]
+        df.to_csv(encoder_type + 'paddlespeech_train_list.csv')
 
     def setup_dataloader(self):
         config = self.config.clone()
@@ -455,6 +465,7 @@ class U2Tester(U2Trainer):
         logger.info(f"Test Total Examples: {len(self.test_loader.dataset)}")
 
         stride_ms = self.config.stride_ms
+        windows_ms = self.config.window_ms
         error_rate_type = None
         errors_sum, len_refs, num_ins = 0.0, 0, 0
         num_frames = 0.0
@@ -468,16 +479,16 @@ class U2Tester(U2Trainer):
                 len_refs += metrics['len_refs']
                 num_ins += metrics['num_ins']
                 error_rate_type = metrics['error_rate_type']
-                rtf = num_time / (num_frames * stride_ms)
+                rtf = num_time / ((num_frames * stride_ms) + (windows_ms - stride_ms) * len(batch))
                 logger.info(
                     "RTF: %f, Error rate [%s] (%d/?) = %f" %
                     (rtf, error_rate_type, num_ins, errors_sum / len_refs))
 
-        rtf = num_time / (num_frames * stride_ms)
+        rtf = num_time / ((num_frames * stride_ms) + (windows_ms - stride_ms) * len(self.test_loader) )
         msg = "Test: "
         msg += "epoch: {}, ".format(self.epoch)
         msg += "step: {}, ".format(self.iteration)
-        msg += "RTF: {}, ".format(rtf)
+        msg += "Final RTF: {}, ".format(rtf)
         msg += "Final error rate [%s] (%d/%d) = %f" % (
             error_rate_type, num_ins, num_ins, errors_sum / len_refs)
         logger.info(msg)
