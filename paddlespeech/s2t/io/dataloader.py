@@ -63,6 +63,7 @@ class BatchDataLoader():
                  train_mode: bool,
                  sortagrad: int=0,
                  batch_size: int=0,
+                 do_filter: bool=True,
                  maxlen_in: float=float('inf'),
                  maxlen_out: float=float('inf'),
                  minibatches: int=0,
@@ -111,6 +112,7 @@ class BatchDataLoader():
         self.minibaches = make_batchset(
             self.data_json,
             batch_size,
+            do_filter,
             maxlen_in,
             maxlen_out,
             minibatches,  # for debug

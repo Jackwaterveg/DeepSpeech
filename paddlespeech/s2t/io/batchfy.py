@@ -321,6 +321,7 @@ BATCH_SORT_KEY_CHOICES = ["input", "output", "shuffle"]
 def make_batchset(
         data,
         batch_size=0,
+        do_filter=True,
         max_length_in=float("inf"),
         max_length_out=float("inf"),
         num_batches=0,
@@ -415,12 +416,33 @@ def make_batchset(
                                       num_batches, shortest_first)
             batches_list.append(batches)
             continue
-
+        if do_filter:
+            max_input_filted_data = filter(
+                lambda data: float(data[1][batch_sort_key][batch_sort_axis]["shape"][0]) * 100 < max_length_in ,
+                d.items(),
+            )
+            min_input_filted_data = filter(
+                lambda data: float(data[1][batch_sort_key][batch_sort_axis]["shape"][0]) * 100 > 0 ,
+                max_input_filted_data 
+            )
+            max_output_filted_data = filter(
+                lambda data: float(data[1]["output"][0]["shape"][0]) <  max_length_out ,
+                min_input_filted_data
+            )
+            min_output_filted_data = filter(
+                lambda data: float(data[1]["output"][0]["shape"][0])  > 0 ,
+                max_output_filted_data
+            )
+            data_items = min_output_filted_data
+        else:
+            data_items = d.items()
         # sort it by input lengths (long to short)
         sorted_data = sorted(
-            d.items(),
+            data_items,
             key=lambda data: float(data[1][batch_sort_key][batch_sort_axis]["shape"][0]),
             reverse=not shortest_first, )
+        for item in sorted_data:
+            print ("sorted data", item)
         logger.info("# utts: " + str(len(sorted_data)))
 
         if count == "seq":
