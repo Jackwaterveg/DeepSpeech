@@ -16,6 +16,8 @@ import numpy as np
 from python_speech_features import delta
 from python_speech_features import logfbank
 from python_speech_features import mfcc
+import paddle
+import paddleaudio.compliance.kaldi as kaldi
 
 
 class AudioFeaturizer():
@@ -319,7 +321,7 @@ class AudioFeaturizer():
                        dither=1.0,
                        delta_delta=False):
         """Compute logfbank from samples.
-        
+
         Args:
             samples (np.ndarray, np.int16): the audio signal from which to compute features. Should be an N*1 array
             sample_rate (float): the sample rate of the signal we are working with, in Hz.
@@ -345,6 +347,7 @@ class AudioFeaturizer():
             raise ValueError("Stride size must not be greater than "
                              "window size.")
         # (T, D)
+        """
         fbank_feat = logfbank(
             signal=samples,
             samplerate=sample_rate,
@@ -360,4 +363,18 @@ class AudioFeaturizer():
             wintype='povey')
         if delta_delta:
             fbank_feat = self._concat_delta_delta(fbank_feat)
+        """
+        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
+        mat = kaldi.fbank(
+            waveform,
+            n_mels=80,
+            frame_length=window_ms,  # 25
+            frame_shift=stride_ms,   # 10
+            dither=dither,
+            energy_floor=0.0,
+            sr=sample_rate)
+        fbank_feat = np.squeeze(mat.numpy())
+        if delta_delta:
+            fbank_feat = self._concat_delta_delta(fbank_feat)
+
         return fbank_feat
