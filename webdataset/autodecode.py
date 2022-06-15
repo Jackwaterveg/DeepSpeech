@@ -20,17 +20,19 @@ image_extensions = "jpg jpeg png ppm pgm pbm pnm".split()
 ################################################################
 
 
-def torch_loads(data):
+def paddle_loads(data):
     """Load data using torch.loads, importing torch only if needed.
 
     :param data: data to be decoded
     """
     import io
 
-    import torch
+    #import torch
+    import paddle
 
     stream = io.BytesIO(data)
-    return torch.load(stream)
+    #return torch.load(stream)
+    return paddle.load(stream)
 
 
 def tenbin_loads(data):
@@ -71,7 +73,7 @@ decoders = {
     "jsn": lambda data: json.loads(data),
     "pyd": lambda data: pickle.loads(data),
     "pickle": lambda data: pickle.loads(data),
-    "pth": lambda data: torch_loads(data),
+    "pdparams": lambda data: paddle_loads(data),
     "ten": tenbin_loads,
     "tb": tenbin_loads,
     "mp": msgpack_loads,
@@ -245,10 +247,12 @@ class ImageHandler:
                 raise ValueError("ImageHandler: torch image must be uint8")
             if etype == "uint8":
                 result = np.array(result.transpose(2, 0, 1))
-                return torch.tensor(result)
+                #return torch.tensor(result)
+                return paddle.tensor(result)
             else:
                 result = np.array(result.transpose(2, 0, 1))
-                return torch.tensor(result) / 255.0
+               # return torch.tensor(result) / 255.0
+                return paddle.tensor(result) / 255.0
         return None
 
 
@@ -292,7 +296,7 @@ def torch_video(key, data):
 ################################################################
 
 
-def torch_audio(key, data):
+def paddle_audio(key, data):
     """Decode audio using the torchaudio library.
 
     :param key: file name extension
@@ -302,13 +306,15 @@ def torch_audio(key, data):
     if extension not in ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]:
         return None
 
-    import torchaudio
+    #import torchaudio
+    import paddleaudio
 
     with tempfile.TemporaryDirectory() as dirname:
         fname = os.path.join(dirname, f"file.{extension}")
         with open(fname, "wb") as stream:
             stream.write(data)
-        return torchaudio.load(fname)
+        #return torchaudio.load(fname)
+        return paddleaudio.load(fname)
 
 
 ################################################################

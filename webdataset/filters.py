@@ -20,7 +20,8 @@ from functools import reduce, wraps
 import numpy as np
 
 from . import autodecode, utils
-from .pytorch import TorchTensor
+#from .pytorch import TorchTensor
+from .paddle import PaddleTensor
 from .utils import PipelineStage
 
 
@@ -437,11 +438,14 @@ def default_collation_fn(samples, combine_tensors=True, combine_scalars=True):
         if isinstance(b[0], (int, float)):
             if combine_scalars:
                 b = np.array(list(b))
-        elif isinstance(b[0], TorchTensor):
+        #elif isinstance(b[0], TorchTensor):
+        elif isinstance(b[0], PaddleTensor):
             if combine_tensors:
-                import torch
+                #import torch
+                import paddle
 
-                b = torch.stack(list(b))
+                #b = torch.stack(list(b))
+                b = paddle.stack(list(b))
         elif isinstance(b[0], np.ndarray):
             if combine_tensors:
                 b = np.array(list(b))

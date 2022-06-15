@@ -65,7 +65,22 @@ def bytestr(data: Any):
         return data.encode("ascii")
     return str(data).encode("ascii")
 
+def paddle_dumps(data: Any):
+    """Dump data into a bytestring using paddle.dumps.
 
+    This delays importing paddle until needed.
+
+    :param data: data to be dumped
+    """
+    import io
+
+    import paddle
+
+    stream = io.BytesIO()
+    paddle.save(data, stream)
+    return stream.getvalue()
+
+'''
 def torch_dumps(data: Any):
     """Dump data into a bytestring using torch.dumps.
 
@@ -80,7 +95,7 @@ def torch_dumps(data: Any):
     stream = io.BytesIO()
     torch.save(data, stream)
     return stream.getvalue()
-
+'''
 
 def numpy_dumps(data: np.ndarray):
     """Dump data into a bytestring using numpy npy format.
@@ -145,7 +160,7 @@ def make_handlers():
     add_handlers(handlers, "txt text transcript", lambda x: x.encode("utf-8"))
     add_handlers(handlers, "html htm", lambda x: x.encode("utf-8"))
     add_handlers(handlers, "pyd pickle", pickle.dumps)
-    add_handlers(handlers, "pth", torch_dumps)
+    add_handlers(handlers, "pdparams", paddle_dumps)
     add_handlers(handlers, "npy", numpy_dumps)
     add_handlers(handlers, "npz", numpy_npz_dumps)
     add_handlers(handlers, "ten tenbin tb", tenbin_dumps)

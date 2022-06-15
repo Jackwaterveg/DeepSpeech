@@ -18,7 +18,8 @@ import sys
 import braceexpand
 
 from . import utils
-from .pytorch import IterableDataset
+#from .pytorch import IterableDataset
+from .paddle import IterableDataset
 from .utils import PipelineStage
 
 

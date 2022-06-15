@@ -87,7 +87,47 @@ def repeatedly(
         if nepochs is not None and epoch >= nepochs:
             return
 
+def paddle_worker_info(group=None):
+    """Return node and worker info for PyTorch and some distributed environments."""
+    rank = 0
+    world_size = 1
+    worker = 0
+    num_workers = 1
+    if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
+        rank = int(os.environ["RANK"])
+        world_size = int(os.environ["WORLD_SIZE"])
+    else:
+        try:
+            import paddle.distributed
 
+            #if torch.distributed.is_available() and torch.distributed.is_initialized():
+            if True:
+               # group = group or torch.distributed.group.WORLD
+                group = group or paddle.distributed.get_group()
+                rank = paddle.distributed.get_rank()
+                #world_size = torch.distributed.get_world_size(group=group)
+                world_size = paddle.distributed.get_world_size()
+        except ModuleNotFoundError:
+            pass
+    if "WORKER" in os.environ and "NUM_WORKERS" in os.environ:
+        worker = int(os.environ["WORKER"])
+        num_workers = int(os.environ["NUM_WORKERS"])
+    else:
+        try:
+            #import torch.utils.data
+            import paddle.io.get_worker_info 
+            #worker_info = torch.utils.data.get_worker_info()
+            worker_info = paddle.io.get_worker_info()
+            if worker_info is not None:
+                worker = worker_info.id
+                num_workers = worker_info.num_workers
+        except ModuleNotFoundError:
+            pass
+
+    return rank, world_size, worker, num_workers
+
+
+"""
 def pytorch_worker_info(group=None):
     """Return node and worker info for PyTorch and some distributed environments."""
     rank = 0
@@ -122,9 +162,16 @@ def pytorch_worker_info(group=None):
             pass
 
     return rank, world_size, worker, num_workers
+"""
 
+def paddle_worker_seed(group=None):
+    """Compute a distinct, deterministic RNG seed for each worker and node."""
+    rank, world_size, worker, num_workers = paddle_worker_info(group=group)
+    return rank * 1000 + worker
 
+"""
 def pytorch_worker_seed(group=None):
     """Compute a distinct, deterministic RNG seed for each worker and node."""
     rank, world_size, worker, num_workers = pytorch_worker_info(group=group)
+"""
     return rank * 1000 + worker

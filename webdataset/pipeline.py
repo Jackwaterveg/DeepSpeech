@@ -8,7 +8,7 @@ import braceexpand, yaml
 
 from . import autodecode, extradatasets as eds, filters, shardlists, tariterators
 from .handlers import reraise_exception
-from .pytorch import DataLoader, IterableDataset
+from .paddle import DataLoader, IterableDataset
 from .utils import PipelineStage
 
 

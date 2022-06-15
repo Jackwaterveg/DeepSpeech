@@ -13,9 +13,9 @@ from .autodecode import (
     Decoder,
     gzfilter,
     handle_extension,
-    imagehandler,
-    torch_audio,
-    torch_loads,
+    #imagehandler,
+    paddle_audio,
+    paddle_loads,
     torch_video,
 )
 from .cache import (

@@ -12,7 +12,7 @@ from functools import reduce, wraps
 import numpy as np
 
 from . import autodecode, utils
-from .pytorch import TorchTensor, IterableDataset
+from .pytorch import PaddleTensor, IterableDataset
 from .utils import PipelineStage
 
 

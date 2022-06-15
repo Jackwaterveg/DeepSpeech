@@ -7,7 +7,8 @@ import numpy as np
 import PIL
 import pytest
 import torch
-from torch.utils.data import DataLoader
+#from torch.utils.data import DataLoader
+from paddle.io import DataLoader
 from io import StringIO
 import yaml
 from itertools import islice
@@ -882,7 +883,7 @@ def test_dataloader():
         wds.decode("torchrgb"),
         wds.to_tuple("jpg;png", "json"),
     )
-    dl = torch.utils.data.DataLoader(ds, num_workers=4)
+    dl = paddle.io.DataLoader(ds, num_workers=4)
     assert count_samples_tuple(dl, n=100) == 100
 
 
@@ -895,20 +896,20 @@ def IGNORE_test_multimode():
     shardlist = wds.PytorchShardList(urls, verbose=True, epoch_shuffle=True, shuffle=True)
     os.environ["WDS_EPOCH"] = "7"
     ds = wds.WebDataset(shardlist)
-    dl = torch.utils.data.DataLoader(ds, num_workers=4)
+    dl = paddle.io.DataLoader(ds, num_workers=4)
     count = count_samples_tuple(dl)
     assert count == nsamples, count
     del os.environ["WDS_EPOCH"]
 
     shardlist = wds.PytorchShardList(urls, verbose=True, split_by_worker=False)
     ds = wds.WebDataset(shardlist)
-    dl = torch.utils.data.DataLoader(ds, num_workers=4)
+    dl = paddle.io.DataLoader(ds, num_workers=4)
     count = count_samples_tuple(dl)
     assert count == 4 * nsamples, count
 
     shardlist = shardlists.ResampledShards(urls)
     ds = wds.WebDataset(shardlist).slice(170)
-    dl = torch.utils.data.DataLoader(ds, num_workers=4)
+    dl = paddle.io.DataLoader(ds, num_workers=4)
     count = count_samples_tuple(dl)
     assert count == 170 * 4, count
 

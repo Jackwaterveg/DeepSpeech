@@ -8,7 +8,7 @@
 
 
 try:
-    from torch.utils.data import DataLoader, IterableDataset
+    from paddle.io import DataLoader, IterableDataset
 except ModuleNotFoundError:
 
     class IterableDataset:
@@ -21,7 +21,15 @@ except ModuleNotFoundError:
 
         pass
 
+try:
+    from paddle import Tensor as PaddleTensor
+except ModuleNotFoundError:
 
+    class TorchTensor:
+        """Empty implementation of PaddleTensor when paddle is not available."""
+
+        pass
+"""
 try:
     from torch import Tensor as TorchTensor
 except ModuleNotFoundError:
@@ -30,3 +38,4 @@ except ModuleNotFoundError:
         """Empty implementation of TorchTensor when torch is not available."""
 
         pass
+"""

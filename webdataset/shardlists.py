@@ -19,7 +19,7 @@ import braceexpand, yaml
 
 from . import utils
 from .filters import pipelinefilter
-from .pytorch import IterableDataset
+from .paddle import IterableDataset
 
 
 def expand_urls(urls):
@@ -60,7 +60,8 @@ class SimpleShardList(IterableDataset):
 
 
 def split_by_node(src, group=None):
-    rank, world_size, worker, num_workers = utils.pytorch_worker_info(group=group)
+    #rank, world_size, worker, num_workers = utils.pytorch_worker_info(group=group)
+    rank, world_size, worker, num_workers = utils.paddle_worker_info(group=group)
     if world_size > 1:
         for s in islice(src, rank, None, world_size):
             yield s
@@ -70,7 +71,8 @@ def split_by_node(src, group=None):
 
 
 def single_node_only(src, group=None):
-    rank, world_size, worker, num_workers = utils.pytorch_worker_info(group=group)
+    #rank, world_size, worker, num_workers = utils.pytorch_worker_info(group=group)
+    rank, world_size, worker, num_workers = utils.paddle_worker_info(group=group)
     if world_size > 1:
         raise ValueError("input pipeline needs to be reconfigured for multinode training")
     for s in src:
@@ -78,7 +80,8 @@ def single_node_only(src, group=None):
 
 
 def split_by_worker(src):
-    rank, world_size, worker, num_workers = utils.pytorch_worker_info()
+    #rank, world_size, worker, num_workers = utils.pytorch_worker_info()
+    rank, world_size, worker, num_workers = utils.paddle_worker_info()
     if num_workers > 1:
         for s in islice(src, worker, None, num_workers):
             yield s
@@ -132,6 +135,10 @@ def expand(s):
     return os.path.expanduser(os.path.expandvars(s))
 
 
+class MultiShardSample(IterableDataset):
+    def __init__(self, fname):
+        """Construct a shardlist from multiple sources using a YAML spec."""
+        self.epoch = -1
 class MultiShardSample(IterableDataset):
     def __init__(self, fname):
         """Construct a shardlist from multiple sources using a YAML spec."""
@@ -232,7 +239,8 @@ class ResampledShards(IterableDataset):
         self.urls = urls
         assert isinstance(self.urls[0], str)
         self.nshards = nshards
-        self.worker_seed = utils.pytorch_worker_seed if worker_seed is None else worker_seed
+        #self.worker_seed = utils.pytorch_worker_seed if worker_seed is None else worker_seed
+        self.worker_seed = utils.paddle_worker_seed if worker_seed is None else worker_seed
         self.deterministic = deterministic
         self.epoch = -1
 
@@ -244,8 +252,3 @@ class ResampledShards(IterableDataset):
         else:
             seed = utils.make_seed(self.worker_seed(), self.epoch, os.getpid(), time.time_ns(), os.urandom(4))
         if os.environ.get("WDS_SHOW_SEED", "0") == "1":
-            print(f"# ResampledShards seed {seed}")
-        self.rng = random.Random(seed)
-        for _ in range(self.nshards):
-            index = self.rng.randint(0, len(self.urls) - 1)
-            yield dict(url=self.urls[index])
