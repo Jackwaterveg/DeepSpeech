@@ -94,7 +94,7 @@ class U2Trainer(Trainer):
         report("batch_size", self.config.batch_size)
         report("accum", train_conf.accum_grad)
         report("step_cost", iteration_time)
-
+       
         if (batch_index + 1) % train_conf.accum_grad == 0:
             if dist.get_rank() == 0 and self.visualizer:
                 losses_np_v = losses_np.copy()
@@ -155,6 +155,8 @@ class U2Trainer(Trainer):
         logger.info(f"Train Total Examples: {len(self.train_loader.dataset)}")
         while self.epoch < self.config.n_epoch:
             with Timer("Epoch-Train Time Cost: {}"):
+                if self.iteration >= self.n_iteration:
+                    break
                 self.model.train()
                 try:
                     data_start_time = time.time()
@@ -188,6 +190,8 @@ class U2Trainer(Trainer):
                         if (batch_index + 1) % self.config.log_interval == 0:
                             logger.info(msg)
                         data_start_time = time.time()
+                        if self.iteration >= self.n_iteration:
+                            break
                 except Exception as e:
                     logger.error(e)
                     raise e

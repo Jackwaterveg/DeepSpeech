@@ -215,12 +215,14 @@ class Trainer():
             # lr will resotre from optimizer ckpt
             self.iteration = infos["step"]
             self.epoch = infos["epoch"]
+            self.n_iteration = self.iteration + self.config.increment_iter
             scratch = False
             logger.info(
                 f"Restore ckpt: epoch {self.epoch }, step {self.iteration}!")
         else:
             self.iteration = 0
             self.epoch = 0
+            self.n_iteration = self.iteration + self.config.increment_iter
             scratch = True
             logger.info("Init from scratch!")
         return scratch
